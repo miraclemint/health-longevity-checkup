@@ -689,7 +689,7 @@ export default function LongevityGame() {
                       ย้อนกลับแก้ไขข้อก่อนหน้า
                     </button>
                   ) : (
-                    <div className="h-9"></div> {/* Placeholder to keep height consistent */}
+                    <div className="h-9"></div>
                   )}
                 </div>
               </div>
