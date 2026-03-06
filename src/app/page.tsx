@@ -577,23 +577,31 @@ export default function LongevityGame() {
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -50 }}
-              className="max-w-md mx-auto w-full px-4 py-4 md:py-8 flex flex-col h-[85vh] justify-center"
+              className="max-w-md mx-auto w-full px-4 pt-8 pb-12 md:py-12 flex flex-col min-h-[100dvh] md:min-h-[85vh] justify-center"
             >
-              <div className="mb-6">
-                <div className="flex justify-between text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">
-                  <span>ความคืบหน้าภาพรวม</span>
-                  <span className="text-emerald-600">{Math.round(overallProgress)}%</span>
+              <div className="mb-8 w-full mt-auto md:mt-0">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-sm font-bold text-slate-700 shadow-sm">
+                    <div className="[&>svg]:w-5 [&>svg]:h-5 shrink-0">
+                      {STAGES[currentStage].icon}
+                    </div>
+                    <span>
+                      {STAGES[currentStage].title} <span className="text-slate-400 font-medium ml-1">({currentQuestionIndex + 1}/{STAGES[currentStage].questions.length})</span>
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">ภาพรวม</span>
+                    <span className="text-emerald-600 font-black text-lg leading-none">{Math.round(overallProgress)}%</span>
+                  </div>
                 </div>
-                <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-teal-400 to-emerald-500 transition-all duration-500 ease-out" style={{ width: `${overallProgress}%` }} />
+                <div className="h-3 w-full bg-slate-200 rounded-full overflow-hidden shadow-inner">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all duration-500 ease-out relative"
+                    style={{ width: `${overallProgress}%` }}
+                  >
+                    <div className="absolute inset-0 bg-white/20 w-full h-full animate-pulse"></div>
+                  </div>
                 </div>
-              </div>
-
-              <div className="text-center mb-4">
-                <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-white border border-slate-200 rounded-full text-xs font-bold text-slate-600 shadow-sm">
-                  {STAGES[currentStage].icon}
-                  {STAGES[currentStage].title} - ข้อที่ {currentQuestionIndex + 1}/{STAGES[currentStage].questions.length}
-                </span>
               </div>
 
               <div className="flex-1 relative flex items-center justify-center min-h-[400px]">
