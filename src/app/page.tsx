@@ -577,34 +577,48 @@ export default function LongevityGame() {
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -50 }}
-              className="max-w-md mx-auto w-full px-4 pt-8 pb-12 md:py-12 flex flex-col min-h-[100dvh] md:min-h-[85vh] justify-center"
+              className="max-w-md mx-auto w-full px-4 pt-6 pb-24 flex flex-col min-h-[100dvh] justify-between relative"
             >
-              <div className="mb-8 w-full mt-auto md:mt-0">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-sm font-bold text-slate-700 shadow-sm">
-                    <div className="[&>svg]:w-5 [&>svg]:h-5 shrink-0">
+              {/* Modern Top Header & Progress */}
+              <div className="w-full mb-4 shrink-0 mt-2">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white rounded-full shadow-sm border border-slate-100 flex items-center justify-center shrink-0 [&>svg]:w-5 [&>svg]:h-5">
                       {STAGES[currentStage].icon}
                     </div>
-                    <span>
-                      {STAGES[currentStage].title} <span className="text-slate-400 font-medium ml-1">({currentQuestionIndex + 1}/{STAGES[currentStage].questions.length})</span>
-                    </span>
+                    <div>
+                      <h3 className="text-sm font-extrabold text-slate-800 leading-none mb-1">
+                        {STAGES[currentStage].title}
+                      </h3>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                        ข้อ {currentQuestionIndex + 1} จาก {STAGES[currentStage].questions.length}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-end">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">ภาพรวม</span>
-                    <span className="text-emerald-600 font-black text-lg leading-none">{Math.round(overallProgress)}%</span>
+
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                      ภาพรวม
+                    </p>
+                    <p className="text-base font-black text-emerald-500 leading-none">
+                      {Math.round(overallProgress)}%
+                    </p>
                   </div>
                 </div>
-                <div className="h-3 w-full bg-slate-200 rounded-full overflow-hidden shadow-inner">
+
+                {/* Sleek Progress Bar */}
+                <div className="h-2 w-full bg-slate-200/60 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all duration-500 ease-out relative"
+                    className="h-full bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full transition-all duration-700 ease-out relative"
                     style={{ width: `${overallProgress}%` }}
                   >
-                    <div className="absolute inset-0 bg-white/20 w-full h-full animate-pulse"></div>
+                    <div className="absolute top-0 right-0 bottom-0 left-0 bg-white/20 animate-[pulse_2s_ease-in-out_infinite]" />
                   </div>
                 </div>
               </div>
 
-              <div className="flex-1 relative flex items-center justify-center min-h-[400px]">
+              {/* Centered Draggable Card Area */}
+              <div className="flex-1 w-full relative flex items-center justify-center my-4 min-h-[380px]">
                 <AnimatePresence mode="popLayout">
                   <motion.div
                     key={`card-${currentStage}-${currentQuestionIndex}`}
@@ -633,45 +647,52 @@ export default function LongevityGame() {
                     <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mb-6 shadow-sm">
                       {STAGES[currentStage].icon}
                     </div>
-                    <h3 className="text-xl font-bold text-slate-800 leading-snug mb-4">
+                    <h3 className="text-2xl font-black text-slate-800 leading-snug mb-6 tracking-tight">
                       {currentQuestionData.text}
                     </h3>
-                    <div className="mt-6 text-slate-500 text-xs uppercase tracking-widest font-semibold flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-full">
-                      <div className="flex items-center gap-1 text-rose-500">
-                        <ArrowRight className="w-3 h-3 rotate-180" /> ไม่
+                    <div className="mt-4 text-slate-500 text-[10px] md:text-xs font-bold uppercase tracking-widest flex items-center gap-4 bg-slate-100/80 px-5 py-2.5 rounded-full border border-slate-200">
+                      <div className="flex items-center gap-1.5 text-rose-500">
+                        <ArrowRight className="w-3.5 h-3.5 rotate-180" /> เลื่อนซ้าย: ไม่
                       </div>
                       <span className="text-slate-300">|</span>
-                      <div className="flex items-center gap-1 text-emerald-500">
-                        ใช่ <ArrowRight className="w-3 h-3" />
+                      <div className="flex items-center gap-1.5 text-emerald-500">
+                        เลื่อนขวา: ใช่ <ArrowRight className="w-3.5 h-3.5" />
                       </div>
                     </div>
                   </motion.div>
                 </AnimatePresence>
               </div>
 
-              <div className="flex justify-between gap-4 mt-8">
-                <button
-                  onClick={() => handleAnswer(false)}
-                  className="flex-1 py-4 bg-white border-2 border-rose-200 text-rose-500 hover:bg-rose-50 rounded-2xl font-bold text-lg transition-all shadow-sm flex justify-center items-center"
-                >
-                  ✕ ไม่
-                </button>
-                <button
-                  onClick={() => handleAnswer(true)}
-                  className="flex-1 py-4 bg-white border-2 border-emerald-200 text-emerald-500 hover:bg-emerald-50 rounded-2xl font-bold text-lg transition-all shadow-sm flex justify-center items-center"
-                >
-                  ✓ ใช่
-                </button>
-              </div>
+              {/* Action Buttons (Fixed or Bottom) */}
+              <div className="w-full shrink-0 mt-4 space-y-4">
+                <div className="flex justify-between gap-4">
+                  <button
+                    onClick={() => handleAnswer(false)}
+                    className="flex-1 py-4 bg-white border-b-4 border-2 border-slate-200 border-b-rose-200 hover:border-rose-400 focus:border-rose-400 text-rose-500 hover:bg-rose-50 rounded-2xl font-black text-lg transition-all active:border-b-0 active:translate-y-1 flex justify-center items-center shadow-sm"
+                  >
+                    ✕ ไม่
+                  </button>
+                  <button
+                    onClick={() => handleAnswer(true)}
+                    className="flex-1 py-4 bg-white border-b-4 border-2 border-slate-200 border-b-emerald-200 hover:border-emerald-400 focus:border-emerald-400 text-emerald-500 hover:bg-emerald-50 rounded-2xl font-black text-lg transition-all active:border-b-0 active:translate-y-1 flex justify-center items-center shadow-sm"
+                  >
+                    ✓ ใช่
+                  </button>
+                </div>
 
-              {(currentStage > 0 || currentQuestionIndex > 0) && (
-                <button
-                  onClick={handlePrevQuestion}
-                  className="mt-6 text-sm text-slate-500 hover:text-slate-700 underline font-medium"
-                >
-                  ย้อนกลับแก้ไขข้อก่อนหน้า
-                </button>
-              )}
+                <div className="text-center">
+                  {(currentStage > 0 || currentQuestionIndex > 0) ? (
+                    <button
+                      onClick={handlePrevQuestion}
+                      className="text-sm text-slate-400 hover:text-slate-600 font-bold transition-colors py-2"
+                    >
+                      ย้อนกลับแก้ไขข้อก่อนหน้า
+                    </button>
+                  ) : (
+                    <div className="h-9"></div> {/* Placeholder to keep height consistent */}
+                  )}
+                </div>
+              </div>
             </motion.div>
           );
         })()}
@@ -829,6 +850,6 @@ export default function LongevityGame() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </div >
   );
 }
