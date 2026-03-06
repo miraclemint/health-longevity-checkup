@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useAnimation, PanInfo } from "framer-motion";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 import { Play, ArrowRight, Send, CheckCircle2, Shield, HeartPulse, Brain, Zap, Moon, Flame, Trophy, Activity, Camera, Copy, Check, Users } from "lucide-react";
 import html2canvas from "html2canvas";
@@ -147,7 +147,7 @@ function getResultData(score: number) {
   } else if (score >= 70) {
     return {
       title: "ดีมาก (Balanced)",
-      nickname: "สายสมดุล",
+      nickname: "ผู้ฝึกวิถีสุขภาพ",
       color: "from-blue-400 to-cyan-500",
       bgSoft: "bg-blue-50",
       textColor: "text-blue-500",
@@ -156,7 +156,7 @@ function getResultData(score: number) {
   } else if (score >= 50) {
     return {
       title: "ปานกลาง (At Risk)",
-      nickname: "นักสู้สุขภาพ",
+      nickname: "ผู้เริ่มต้นภารกิจสุขภาพ",
       color: "from-amber-400 to-orange-500",
       bgSoft: "bg-amber-50",
       textColor: "text-amber-500",
@@ -165,7 +165,7 @@ function getResultData(score: number) {
   } else {
     return {
       title: "เสี่ยงสูง (Critical)",
-      nickname: "นักฟื้นฟู",
+      nickname: "ผู้ตื่นรู้สุขภาพ",
       color: "from-rose-400 to-red-500",
       bgSoft: "bg-rose-50",
       textColor: "text-rose-500",
@@ -177,8 +177,9 @@ function getResultData(score: number) {
 // --- Main App Component ---
 
 export default function LongevityGame() {
-  const [gameState, setGameState] = useState<"intro" | "form" | "playing" | "calculating" | "result">("intro");
+  const [gameState, setGameState] = useState<"intro" | "form" | "stageIntro" | "playing" | "calculating" | "result">("intro");
   const [currentStage, setCurrentStage] = useState(0);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
   // Forms
   const [userInfo, setUserInfo] = useState({
@@ -202,32 +203,82 @@ export default function LongevityGame() {
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const toggleSelection = (stageIndex: number, questionIndex: number) => {
-    setSelections((prev) => {
-      const current = prev[stageIndex] || [];
-      if (current.includes(questionIndex)) {
-        return { ...prev, [stageIndex]: current.filter((i) => i !== questionIndex) };
-      } else {
-        return { ...prev, [stageIndex]: [...current, questionIndex] };
-      }
-    });
-  };
+  const playSound = (type: "swipeLeft" | "swipeRight") => {
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
 
-  const handleNextStage = () => {
-    if (currentStage < STAGES.length - 1) {
-      setCurrentStage(currentStage + 1);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } else {
-      setGameState("calculating");
-      setTimeout(() => setGameState("result"), 2500);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      if (type === "swipeRight") {
+        // Happy "Ding"
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+        osc.frequency.exponentialRampToValueAtTime(1046.50, ctx.currentTime + 0.1); // C6
+        gainNode.gain.setValueAtTime(0, ctx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.05);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.2);
+      } else {
+        // Dull "Thud"
+        osc.type = "square";
+        osc.frequency.setValueAtTime(150, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.1);
+        gainNode.gain.setValueAtTime(0, ctx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.05);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.15);
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
-  const handlePrevStage = () => {
-    if (currentStage > 0) {
-      setCurrentStage(currentStage - 1);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+  const handleAnswer = (isYes: boolean) => {
+    playSound(isYes ? "swipeRight" : "swipeLeft");
+
+    if (isYes) {
+      setSelections((prev) => {
+        const current = prev[currentStage] || [];
+        if (!current.includes(currentQuestionIndex)) {
+          return { ...prev, [currentStage]: [...current, currentQuestionIndex] };
+        }
+        return prev;
+      });
+    } else {
+      setSelections((prev) => {
+        const current = prev[currentStage] || [];
+        return { ...prev, [currentStage]: current.filter((i) => i !== currentQuestionIndex) };
+      });
+    }
+
+    if (currentQuestionIndex < STAGES[currentStage].questions.length - 1) {
+      setCurrentQuestionIndex((prev) => prev + 1);
+    } else {
+      if (currentStage < STAGES.length - 1) {
+        setGameState("stageIntro");
+        setCurrentStage((prev) => prev + 1);
+        setCurrentQuestionIndex(0);
+      } else {
+        setGameState("calculating");
+        setTimeout(() => setGameState("result"), 2500);
+      }
+    }
+  };
+
+  const handlePrevQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex((prev) => prev - 1);
+    } else if (currentStage > 0) {
+      setCurrentStage((prev) => prev - 1);
+      setCurrentQuestionIndex(STAGES[currentStage - 1].questions.length - 1);
+      setGameState("stageIntro"); // go back to stage intro of previous stage
     }
   };
 
@@ -270,34 +321,67 @@ export default function LongevityGame() {
     setIsSaving(true);
 
     try {
-      // Wait a bit to ensure fonts and charts are fully rendered
       await new Promise(resolve => setTimeout(resolve, 500));
 
       const canvas = await html2canvas(shareRef.current, {
         backgroundColor: "#ffffff",
         scale: 2,
         useCORS: true,
-        logging: false
+        logging: false,
+        allowTaint: true,
+        foreignObjectRendering: false
       });
 
-      const image = canvas.toDataURL("image/png");
-      const link = document.createElement("a");
-      link.href = image;
-      link.download = `longevity-score-${totalScore}.png`;
-      link.click();
+      // Try using blob for better mobile support
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          // Fallback to dataURL
+          const image = canvas.toDataURL("image/png");
+          const link = document.createElement("a");
+          link.href = image;
+          link.download = `longevity-score-${userInfo.name}-${totalScore}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setSaved(true);
+          setTimeout(() => setSaved(false), 3000);
+          return;
+        }
 
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+        // Try Web Share API for mobile (share image directly)
+        if (navigator.share && navigator.canShare) {
+          const file = new File([blob], `longevity-score-${totalScore}.png`, { type: "image/png" });
+          const shareData = { files: [file], title: "Longevity Score", text: `${userInfo.name} ได้คะแนนสุขภาพ ${totalScore}/100` };
+          if (navigator.canShare(shareData)) {
+            await navigator.share(shareData);
+            setSaved(true);
+            setTimeout(() => setSaved(false), 3000);
+            return;
+          }
+        }
+
+        // Fallback: download as file
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `longevity-score-${userInfo.name}-${totalScore}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+      }, "image/png");
     } catch (err) {
       console.error("Failed to capture image", err);
-      alert("เกิดข้อผิดพลาดในการบันทึกรูปภาพ กรุณาลองใหม่อีกครั้ง");
+      alert("เกิดข้อผิดพลาดในการบันทึกรูปภาพ กรุณาลองแคปหน้าจอแทน");
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleCopyInvite = () => {
-    const inviteText = `ฉันได้คะแนนสุขภาพองค์รวม ${totalScore}/100 คะแนน! (สุขภาพระดับ: ${resultInfo.title})\nลองมาเช็คสุขภาพและความยืนยาวของคุณได้ที่นี่เลย 👇\n[ใส่ลิงก์เว็บไซต์ของคุณที่นี่]`;
+    const inviteText = `🌟 ${userInfo.name} ได้คะแนนสุขภาพองค์รวม ${totalScore}/100 คะแนน!\n🏅 ฉายา: "${resultInfo.nickname}" (สุขภาพระดับ: ${resultInfo.title})\n\nลองมาเช็คสุขภาพและความยืนยาวของคุณได้ที่นี่เลย 👇\nhttps://health-longevity-checkup.vercel.app`;
     navigator.clipboard.writeText(inviteText);
     setCopied(true);
     setTimeout(() => setCopied(false), 3000);
@@ -316,16 +400,16 @@ export default function LongevityGame() {
             exit={{ opacity: 0, y: -30 }}
             className="flex flex-col items-center justify-center min-h-[85vh] text-center px-4"
           >
-            <div className="w-24 h-24 bg-white/50 backdrop-blur-md rounded-full flex items-center justify-center mb-8 shadow-sm border border-slate-100">
+            <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-8 shadow-lg border border-slate-100">
               <HeartPulse className="w-12 h-12 text-emerald-500" />
             </div>
-            <h1 className="text-4xl md:text-5xl font-extrabold text-slate-800 mb-6 leading-tight tracking-tight">
+            <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-6 leading-tight tracking-tight">
               BEYONDE HEALTH <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-600">
                 LONGEVITY CHECKUP
               </span>
             </h1>
-            <p className="text-slate-500 text-lg md:text-xl max-w-2xl mb-12 leading-relaxed font-light">
+            <p className="text-slate-700 text-lg md:text-xl max-w-2xl mb-12 leading-relaxed font-normal">
               สำรวจศักยภาพสุขภาพและความยืนยาวของคุณ ด้วยแนวทางแบบองค์รวม (Holistic Health)
               เพื่อวางแผนชะลอวัยอย่างยั่งยืน
             </p>
@@ -338,7 +422,7 @@ export default function LongevityGame() {
               </span>
               <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-teal-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </button>
-            <div className="mt-14 text-xs text-slate-400 max-w-lg font-light">
+            <div className="mt-14 text-xs text-slate-500 max-w-lg">
               อ้างอิงจากศาสตร์ชะลอวัยแบบองค์รวม (Holistic Health Longevity Science) <br />
               จากมหาลัยชั้นนำระดับโลก
             </div>
@@ -354,21 +438,21 @@ export default function LongevityGame() {
             exit={{ opacity: 0 }}
             className="max-w-2xl mx-auto w-full px-4 py-12"
           >
-            <div className="bg-white border border-slate-100 rounded-3xl p-6 md:p-10 shadow-sm">
-              <div className="mb-8 border-b border-slate-100 pb-6">
-                <h2 className="text-2xl font-bold text-slate-800 mb-2">ข้อมูลเบื้องต้นของคุณ</h2>
-                <p className="text-slate-500 font-light">เพื่อการวิเคราะห์เชิงลึกและปรับแต่ง Health Age</p>
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-10 shadow-sm">
+              <div className="mb-8 border-b border-slate-200 pb-6">
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">ข้อมูลเบื้องต้นของคุณ</h2>
+                <p className="text-slate-600">เพื่อการวิเคราะห์เชิงลึกและปรับแต่ง Health Age</p>
               </div>
 
               <div className="space-y-6">
                 <div>
                   <label className="block text-slate-700 mb-2 font-medium">ชื่อ - นามสกุล หรือ ชื่อเล่น</label>
-                  <p className="text-sm text-slate-400 mb-2 font-light">ข้อมูลนี้จะถูกแสดงบนผลลัพธ์เพื่อใช้แชร์ให้เพื่อนๆ</p>
+                  <p className="text-sm text-slate-500 mb-2">ข้อมูลนี้จะถูกแสดงบนผลลัพธ์เพื่อใช้แชร์ให้เพื่อนๆ</p>
                   <input
                     type="text"
                     value={userInfo.name}
                     onChange={(e) => setUserInfo({ ...userInfo, name: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:border-emerald-500 focus:bg-white transition-colors"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-colors"
                     placeholder="กรอกชื่อของคุณ"
                   />
                 </div>
@@ -381,8 +465,8 @@ export default function LongevityGame() {
                         key={g}
                         onClick={() => setUserInfo({ ...userInfo, gender: g })}
                         className={`flex-1 py-3 rounded-xl border transition-all ${userInfo.gender === g
-                            ? "bg-emerald-50 border-emerald-500 text-emerald-600 font-semibold"
-                            : "bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50"
+                          ? "bg-emerald-50 border-emerald-500 text-emerald-700 font-semibold"
+                          : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                           }`}
                       >
                         {g}
@@ -399,8 +483,8 @@ export default function LongevityGame() {
                         key={a}
                         onClick={() => setUserInfo({ ...userInfo, age: a })}
                         className={`py-3 rounded-xl border transition-all ${userInfo.age === a
-                            ? "bg-emerald-50 border-emerald-500 text-emerald-600 font-semibold"
-                            : "bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50"
+                          ? "bg-emerald-50 border-emerald-500 text-emerald-700 font-semibold"
+                          : "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                           }`}
                       >
                         {a}
@@ -409,8 +493,22 @@ export default function LongevityGame() {
                   </div>
                 </div>
 
+                <div>
+                  <label className="block text-slate-700 mb-2 font-medium">คุณคิดว่าตัวเองมีอายุเท่าใด? (ไม่ใช่อายุจริง)</label>
+                  <p className="text-sm text-slate-500 mb-2">ประเมินจากความรู้สึกของคุณเอง เช่น รู้สึกว่าอายุสุขภาพของคุณอยู่ที่ประมาณกี่ปี</p>
+                  <input
+                    type="number"
+                    value={userInfo.estimatedAge}
+                    onChange={(e) => setUserInfo({ ...userInfo, estimatedAge: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-colors"
+                    placeholder="เช่น 30, 45, 55"
+                    min="1"
+                    max="120"
+                  />
+                </div>
+
                 <button
-                  onClick={() => setGameState("playing")}
+                  onClick={() => setGameState("stageIntro")}
                   disabled={!userInfo.gender || !userInfo.age || !userInfo.name}
                   className="w-full mt-8 py-4 bg-slate-900 text-white rounded-xl font-bold text-lg disabled:opacity-30 disabled:cursor-not-allowed hover:bg-emerald-600 transition-all flex justify-center items-center gap-2 shadow-sm"
                 >
@@ -421,94 +519,154 @@ export default function LongevityGame() {
           </motion.div>
         )}
 
-        {/* Playing Screen */}
-        {gameState === "playing" && (
+        {/* Stage Intro Screen */}
+        {gameState === "stageIntro" && (
           <motion.div
-            key={`playing-${currentStage}`}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="max-w-3xl mx-auto w-full px-4 py-8 md:py-12"
+            key={`stageIntro-${currentStage}`}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="flex flex-col items-center justify-center min-h-[85vh] text-center px-4 max-w-lg mx-auto"
           >
-            <div className="mb-10">
-              <div className="flex justify-between text-xs font-bold text-slate-400 mb-3 tracking-wider uppercase">
-                <span>ภารกิจที่ {currentStage + 1} / {STAGES.length}</span>
-                <span className="text-emerald-500">{Math.round(((currentStage + 1) / STAGES.length) * 100)}%</span>
-              </div>
-              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden flex">
-                {STAGES.map((_, i) => (
-                  <div
-                    key={i}
-                    className={`h-full flex-1 border-r border-white last:border-0 transition-colors duration-500 ${i < currentStage ? "bg-emerald-500" : i === currentStage ? "bg-emerald-300" : "bg-transparent"
-                      }`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-5 mb-8">
-              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center border border-slate-100 shadow-sm shrink-0">
+            <div className="w-28 h-28 bg-white rounded-full flex items-center justify-center mb-6 shadow-xl border-4 border-slate-50 relative">
+              <div className="absolute inset-0 rounded-full bg-emerald-500 opacity-20 animate-ping"></div>
+              <div className="[&>svg]:w-14 [&>svg]:h-14">
                 {STAGES[currentStage].icon}
               </div>
-              <div>
-                <h2 className="text-2xl md:text-3xl font-bold text-slate-800">{STAGES[currentStage].title}</h2>
-                <p className="text-slate-500 mt-1 font-light">{STAGES[currentStage].desc}</p>
-              </div>
             </div>
 
-            <div className="bg-slate-50 p-4 rounded-xl mb-8 border border-slate-100">
-              <p className="text-sm text-slate-600 leading-relaxed font-light">
-                <strong className="text-emerald-600 font-semibold">คำชี้แจง:</strong> โปรดเลือกข้อที่ตรงกับพฤติกรรมที่ผ่านมาของท่าน <br className="hidden md:block" />
-                (เลือกได้มากกว่า 1 ข้อ หากไม่มีข้อใดตรง สามารถกดข้ามได้เลย)
-              </p>
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-emerald-50 text-emerald-600 font-bold rounded-full text-sm mb-4">
+              <Zap className="w-4 h-4" /> หมวดที่ {currentStage + 1} จาก {STAGES.length}
             </div>
 
-            <div className="space-y-4">
-              {STAGES[currentStage].questions.map((q, idx) => {
-                const isSelected = selections[currentStage]?.includes(idx);
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => toggleSelection(currentStage, idx)}
-                    className={`w-full text-left p-5 rounded-2xl border-2 transition-all duration-200 flex items-start gap-4 group ${isSelected
-                        ? "bg-emerald-50 border-emerald-500"
-                        : "bg-white border-slate-100 hover:border-slate-300 hover:bg-slate-50"
-                      }`}
-                  >
-                    <div className={`mt-0.5 shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${isSelected ? "bg-emerald-500 border-emerald-500" : "border-slate-300 group-hover:border-slate-400 bg-white"
-                      }`}>
-                      {isSelected && <CheckCircle2 className="w-4 h-4 text-white" />}
-                    </div>
-                    <span className={`text-lg leading-relaxed ${isSelected ? "text-slate-800 font-medium" : "text-slate-600 font-light"}`}>
-                      {q.text}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            <h2 className="text-4xl md:text-5xl font-black text-slate-900 mb-4 tracking-tight">
+              {STAGES[currentStage].title}
+            </h2>
 
-            <div className="flex gap-4 mt-12">
-              {currentStage > 0 && (
-                <button
-                  onClick={handlePrevStage}
-                  className="px-6 py-4 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-medium transition-colors hidden md:block"
-                >
-                  ย้อนกลับ
-                </button>
-              )}
-              <button
-                onClick={handleNextStage}
-                className="flex-1 py-4 bg-slate-900 text-white hover:bg-emerald-600 rounded-xl font-bold text-lg transition-colors flex justify-center items-center gap-2 shadow-sm"
-              >
-                {currentStage === STAGES.length - 1 ? (
-                  <>ดูผลการประเมิน <Send className="w-5 h-5" /></>
-                ) : (
-                  <>หน้าถัดไป <ArrowRight className="w-5 h-5" /></>
-                )}
-              </button>
-            </div>
+            <p className="text-slate-600 text-xl font-medium mb-10 leading-relaxed max-w-md">
+              {STAGES[currentStage].desc}
+            </p>
+
+            <button
+              onClick={() => setGameState("playing")}
+              className="group relative px-10 py-4 bg-slate-900 text-white rounded-2xl font-bold text-xl overflow-hidden shadow-xl hover:shadow-emerald-500/20 transition-all duration-300 w-full"
+            >
+              <span className="relative z-10 flex items-center justify-center gap-3">
+                เริ่มตอบคำถาม <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+              </span>
+            </button>
           </motion.div>
         )}
+
+        {/* Playing Screen */}
+        {gameState === "playing" && (() => {
+          const currentQuestionData = STAGES[currentStage].questions[currentQuestionIndex];
+          const isSelected = selections[currentStage]?.includes(currentQuestionIndex);
+
+          let passed = 0;
+          for (let i = 0; i < currentStage; i++) {
+            passed += STAGES[i].questions.length;
+          }
+          passed += currentQuestionIndex;
+          const total = STAGES.reduce((acc, s) => acc + s.questions.length, 0);
+          const overallProgress = (passed / total) * 100;
+
+          return (
+            <motion.div
+              key={`playing-${currentStage}-${currentQuestionIndex}`}
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              className="max-w-md mx-auto w-full px-4 py-4 md:py-8 flex flex-col h-[85vh] justify-center"
+            >
+              <div className="mb-6">
+                <div className="flex justify-between text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">
+                  <span>ความคืบหน้าภาพรวม</span>
+                  <span className="text-emerald-600">{Math.round(overallProgress)}%</span>
+                </div>
+                <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-teal-400 to-emerald-500 transition-all duration-500 ease-out" style={{ width: `${overallProgress}%` }} />
+                </div>
+              </div>
+
+              <div className="text-center mb-4">
+                <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-white border border-slate-200 rounded-full text-xs font-bold text-slate-600 shadow-sm">
+                  {STAGES[currentStage].icon}
+                  {STAGES[currentStage].title} - ข้อที่ {currentQuestionIndex + 1}/{STAGES[currentStage].questions.length}
+                </span>
+              </div>
+
+              <div className="flex-1 relative flex items-center justify-center min-h-[400px]">
+                <AnimatePresence mode="popLayout">
+                  <motion.div
+                    key={`card-${currentStage}-${currentQuestionIndex}`}
+                    drag="x"
+                    dragConstraints={{ left: 0, right: 0 }}
+                    onDragEnd={(e, info) => {
+                      if (info.offset.x > 100) {
+                        handleAnswer(true);
+                      } else if (info.offset.x < -100) {
+                        handleAnswer(false);
+                      }
+                    }}
+                    initial={{ scale: 0.9, opacity: 0, y: 30, rotateX: -10 }}
+                    animate={{ scale: 1, opacity: 1, y: 0, rotateX: 0 }}
+                    exit={{ scale: 0.9, opacity: 0, y: -20, rotateZ: 5 }}
+                    transition={{ type: "spring", stiffness: 250, damping: 25 }}
+                    className={`absolute inset-0 bg-gradient-to-br from-white to-slate-50 border-4 rounded-[2.5rem] p-8 flex flex-col items-center justify-center text-center shadow-[0_20px_50px_-15px_rgba(0,0,0,0.15)] cursor-grab active:cursor-grabbing transition-colors ${isSelected ? 'border-emerald-300 shadow-emerald-500/10' : 'border-slate-100'}`}
+                    style={{ transformPerspective: 1000 }}
+                    whileDrag={{ scale: 1.05, border: "4px solid #34d399", rotateZ: (Math.random() - 0.5) * 6, boxShadow: "0 30px 60px -15px rgba(16, 185, 129, 0.2)" }}
+                  >
+                    <div className="absolute top-4 right-4 h-3 flex gap-1">
+                      {STAGES[currentStage].questions.map((_, i) => (
+                        <div key={i} className={`w-3 h-3 rounded-full ${i === currentQuestionIndex ? "bg-emerald-500" : "bg-slate-200"}`} />
+                      ))}
+                    </div>
+                    <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                      {STAGES[currentStage].icon}
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-800 leading-snug mb-4">
+                      {currentQuestionData.text}
+                    </h3>
+                    <div className="mt-6 text-slate-500 text-xs uppercase tracking-widest font-semibold flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-full">
+                      <div className="flex items-center gap-1 text-rose-500">
+                        <ArrowRight className="w-3 h-3 rotate-180" /> ไม่
+                      </div>
+                      <span className="text-slate-300">|</span>
+                      <div className="flex items-center gap-1 text-emerald-500">
+                        ใช่ <ArrowRight className="w-3 h-3" />
+                      </div>
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
+              <div className="flex justify-between gap-4 mt-8">
+                <button
+                  onClick={() => handleAnswer(false)}
+                  className="flex-1 py-4 bg-white border-2 border-rose-200 text-rose-500 hover:bg-rose-50 rounded-2xl font-bold text-lg transition-all shadow-sm flex justify-center items-center"
+                >
+                  ✕ ไม่
+                </button>
+                <button
+                  onClick={() => handleAnswer(true)}
+                  className="flex-1 py-4 bg-white border-2 border-emerald-200 text-emerald-500 hover:bg-emerald-50 rounded-2xl font-bold text-lg transition-all shadow-sm flex justify-center items-center"
+                >
+                  ✓ ใช่
+                </button>
+              </div>
+
+              {(currentStage > 0 || currentQuestionIndex > 0) && (
+                <button
+                  onClick={handlePrevQuestion}
+                  className="mt-6 text-sm text-slate-500 hover:text-slate-700 underline font-medium"
+                >
+                  ย้อนกลับแก้ไขข้อก่อนหน้า
+                </button>
+              )}
+            </motion.div>
+          );
+        })()}
 
         {/* Calculating Screen */}
         {gameState === "calculating" && (
@@ -526,8 +684,8 @@ export default function LongevityGame() {
                 <Brain className="w-10 h-10 text-emerald-500 animate-pulse" />
               </div>
             </div>
-            <h2 className="text-3xl font-bold text-slate-800 mb-4">กำลังประมวลผลสุขภาพองค์รวม...</h2>
-            <p className="text-slate-500 max-w-md animate-pulse font-light">
+            <h2 className="text-3xl font-bold text-slate-900 mb-4">กำลังประมวลผลสุขภาพองค์รวม...</h2>
+            <p className="text-slate-600 max-w-md animate-pulse">
               ระบบกำลังคำนวณ Longevity Score และจัดทำแผนการประเมินสุขภาพของคุณในทั้ง 8 มิติ
             </p>
           </motion.div>
@@ -563,23 +721,23 @@ export default function LongevityGame() {
 
               <div className="p-8 md:p-12">
                 {userInfo.name && (
-                  <div className="text-center mb-10 pb-6 border-b border-slate-100">
-                    <span className="text-slate-400 text-sm font-light uppercase tracking-widest block mb-1">ผลการประเมินของ</span>
-                    <h3 className="text-2xl font-bold text-slate-800">{userInfo.name}</h3>
+                  <div className="text-center mb-10 pb-6 border-b border-slate-200">
+                    <span className="text-slate-600 text-sm font-medium uppercase tracking-widest block mb-1">ผลการประเมินของ</span>
+                    <h3 className="text-2xl font-bold text-slate-900">{userInfo.name}</h3>
                   </div>
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center mb-12">
                   <div className="text-center md:text-left">
-                    <p className="text-slate-400 font-medium tracking-widest uppercase mb-2">Longevity Score</p>
+                    <p className="text-slate-600 font-bold tracking-widest uppercase mb-2">Longevity Score</p>
                     <div className={`text-7xl font-black mb-4 ${resultInfo.textColor}`}>
-                      {totalScore}<span className="text-3xl text-slate-300">/100</span>
+                      {totalScore}<span className="text-3xl text-slate-500">/100</span>
                     </div>
 
-                    <div className={`p-6 ${resultInfo.bgSoft} rounded-2xl border border-white`}>
-                      <p className="text-sm text-slate-500 mb-2 font-medium tracking-wide">HEALTH AGE (อายุสุขภาพ)</p>
+                    <div className={`p-6 ${resultInfo.bgSoft} rounded-2xl border border-slate-100`}>
+                      <p className="text-sm text-slate-700 mb-2 font-bold tracking-wide">HEALTH AGE (อายุสุขภาพ)</p>
                       <div className="text-3xl font-bold text-slate-800 flex items-center md:justify-start justify-center gap-3">
-                        {healthAge} <span className="text-lg font-normal text-slate-500">ปี</span>
+                        {healthAge} <span className="text-lg font-semibold text-slate-700">ปี</span>
                         {parseInt(userInfo.age) < healthAge ? (
                           <span className="text-sm bg-white text-rose-500 border border-rose-100 px-3 py-1 rounded-full shadow-sm">+ แก่กว่าวัย</span>
                         ) : (
@@ -591,11 +749,11 @@ export default function LongevityGame() {
 
                   <div className="h-64 md:h-80 w-full relative">
                     <ResponsiveContainer width="100%" height="100%">
-                      <RadarChart cx="50%" cy="50%" outerRadius="70%" data={calculateRadarData()}>
-                        <PolarGrid stroke="#e2e8f0" />
+                      <RadarChart cx="50%" cy="50%" outerRadius="55%" data={calculateRadarData()}>
+                        <PolarGrid stroke="#cbd5e1" />
                         <PolarAngleAxis
                           dataKey="subject"
-                          tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }}
+                          tick={{ fill: '#1e293b', fontSize: 11, fontWeight: 700 }}
                         />
                         <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
                         <Radar
@@ -611,11 +769,11 @@ export default function LongevityGame() {
                   </div>
                 </div>
 
-                <div className="p-6 md:p-8 bg-slate-50 rounded-3xl border border-slate-100">
+                <div className="p-6 md:p-8 bg-slate-50 rounded-3xl border border-slate-200">
                   <h3 className="text-xl font-bold text-slate-800 mb-3 flex items-center gap-2">
                     <Zap className="w-5 h-5 text-amber-500" /> สรุปผลลัพธ์สุขภาพ
                   </h3>
-                  <p className="text-slate-600 leading-relaxed text-lg font-light">
+                  <p className="text-slate-800 leading-relaxed text-lg font-normal">
                     {resultInfo.desc}
                   </p>
                 </div>
@@ -625,19 +783,19 @@ export default function LongevityGame() {
                     <HeartPulse className="w-5 h-5" />
                   </div>
                   <div className="text-slate-800 font-bold tracking-widest text-sm mb-1">BEYONDE HEALTH</div>
-                  <div className="text-slate-400 text-xs tracking-wider uppercase">Longevity Checkup</div>
+                  <div className="text-slate-500 text-xs tracking-wider uppercase">Longevity Checkup</div>
                 </div>
               </div>
             </div>
 
-            <div className="mt-12 text-center max-w-lg mx-auto bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+            <div className="mt-12 text-center max-w-lg mx-auto bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
               <div className="flex justify-center mb-4">
                 <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center">
                   <Users className="w-6 h-6" />
                 </div>
               </div>
               <h3 className="text-xl font-bold text-slate-800 mb-2">ท้าเพื่อนเช็คสุขภาพ!</h3>
-              <p className="text-slate-500 font-light mb-6 text-sm">
+              <p className="text-slate-600 mb-6 text-sm">
                 ชวนเพื่อนๆ หรือคนที่คุณรักมาประเมินสุขภาพ เพื่อวางแผนชีวิตที่ยืนยาวไปด้วยกัน
               </p>
               <div className="flex flex-col gap-3">
@@ -652,20 +810,6 @@ export default function LongevityGame() {
             </div>
 
             <div className="mt-8 flex flex-col md:flex-row justify-center gap-4">
-              <button
-                onClick={handleShare}
-                disabled={isSaving}
-                className="flex items-center justify-center gap-3 px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold text-lg transition-all shadow-md hover:shadow-emerald-500/20 disabled:opacity-50"
-              >
-                {isSaving ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                ) : saved ? (
-                  <Check className="w-5 h-5" />
-                ) : (
-                  <Camera className="w-5 h-5" />
-                )}
-                {isSaving ? "กำลังบันทึก..." : saved ? "บันทึกสำเร็จ!" : "บันทึกผลลัพธ์เป็นรูปภาพ"}
-              </button>
 
               <button
                 onClick={() => window.location.reload()}
