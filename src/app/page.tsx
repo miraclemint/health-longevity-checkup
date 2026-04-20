@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence, useAnimation, PanInfo } from "framer-motion";
+import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
-import { Play, ArrowRight, Send, CheckCircle2, Shield, HeartPulse, Brain, Zap, Moon, Flame, Trophy, Activity, Camera, Copy, Check, Users } from "lucide-react";
+import { Play, ArrowRight, Shield, HeartPulse, Brain, Zap, Moon, Flame, Trophy, Activity, Copy, Check } from "lucide-react";
 
 // --- Game Data ---
 
@@ -198,27 +198,7 @@ export default function LongevityGame() {
 
   // Refs and Export States
   const shareRef = useRef<HTMLDivElement>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [logoBase64, setLogoBase64] = useState<{ ulife: string; owner: string } | null>(null);
-
-  // Pre-load logos as base64 when result screen appears so html2canvas can render them
-  useEffect(() => {
-    if (gameState !== "result") return;
-    const toBase64 = (url: string): Promise<string> =>
-      fetch(url)
-        .then(r => r.blob())
-        .then(blob => new Promise<string>((res, rej) => {
-          const reader = new FileReader();
-          reader.onload = () => res(reader.result as string);
-          reader.onerror = rej;
-          reader.readAsDataURL(blob);
-        }));
-    Promise.all([toBase64("/ulife-logo.svg"), toBase64("/owner-logo.svg")])
-      .then(([ulife, owner]) => setLogoBase64({ ulife, owner }))
-      .catch(() => setLogoBase64(null));
-  }, [gameState]);
 
   const playSound = (type: "swipeLeft" | "swipeRight") => {
     try {
@@ -333,67 +313,6 @@ export default function LongevityGame() {
   const healthAge = calculateHealthAge(userInfo.age || "36 - 45 ปี", totalScore);
   const resultInfo = getResultData(totalScore);
 
-  const downloadBlob = (blob: Blob, name: string, score: number) => {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `longevity-score-${name || "result"}-${score}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleShare = async () => {
-    if (!shareRef.current || isSaving) return;
-    setIsSaving(true);
-
-    try {
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(shareRef.current, {
-        backgroundColor: "#ffffff",
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        allowTaint: false,
-        foreignObjectRendering: false,
-        imageTimeout: 5000,
-      });
-
-      // Wrap toBlob in a Promise so we can await it properly
-      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, "image/png"));
-
-      if (!blob) {
-        const image = canvas.toDataURL("image/png");
-        const link = document.createElement("a");
-        link.href = image;
-        link.download = `longevity-score-${userInfo.name || "result"}-${totalScore}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else if (navigator.share && navigator.canShare) {
-        const file = new File([blob], `longevity-score-${totalScore}.png`, { type: "image/png" });
-        const shareData = { files: [file], title: "Longevity Score", text: `${userInfo.name} ได้คะแนนสุขภาพ ${totalScore}/100` };
-        if (navigator.canShare(shareData)) {
-          await navigator.share(shareData);
-        } else {
-          downloadBlob(blob, userInfo.name, totalScore);
-        }
-      } else {
-        downloadBlob(blob, userInfo.name, totalScore);
-      }
-
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } catch (err) {
-      console.error("Failed to capture image", err);
-      alert("เกิดข้อผิดพลาดในการบันทึกรูปภาพ กรุณาลองแคปหน้าจอแทน");
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   const handleCopyInvite = () => {
     const inviteText = `🌟 ${userInfo.name} ได้คะแนนสุขภาพองค์รวม ${totalScore}/100 คะแนน!\n🏅 ฉายา: "${resultInfo.nickname}" (สุขภาพระดับ: ${resultInfo.title})\n\nลองมาเช็คสุขภาพและความยืนยาวของคุณได้ที่นี่เลย 👇\nhttps://health-longevity-checkup.vercel.app`;
@@ -410,7 +329,8 @@ export default function LongevityGame() {
     let passed = 0;
     for (let i = 0; i < currentStage; i++) passed += STAGES[i].questions.length;
     if (gameState === "playing") passed += currentQuestionIndex;
-    if (gameState === "calculating" || gameState === "result") passed = totalQ;
+    if (gameState === "calculating") passed = totalQ;
+    if (gameState === "result") return 100;
     return Math.round(5 + (passed / totalQ) * 93);
   };
   const overallPct = getOverallProgress();
@@ -743,9 +663,6 @@ export default function LongevityGame() {
             passed += STAGES[i].questions.length;
           }
           passed += currentQuestionIndex;
-          const total = STAGES.reduce((acc, s) => acc + s.questions.length, 0);
-          const overallProgress = (passed / total) * 100;
-
           return (
             <motion.div
               key={`playing-${currentStage}-${currentQuestionIndex}`}
@@ -791,7 +708,7 @@ export default function LongevityGame() {
                     key={`card-${currentStage}-${currentQuestionIndex}`}
                     drag="x"
                     dragConstraints={{ left: 0, right: 0 }}
-                    onDragEnd={(e, info) => {
+                    onDragEnd={(_e, info) => {
                       if (info.offset.x > 100) {
                         handleAnswer(true);
                       } else if (info.offset.x < -100) {
@@ -1000,9 +917,9 @@ export default function LongevityGame() {
 
                 <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col items-center text-center gap-4">
                   <div className="flex items-center justify-center gap-5">
-                    <img src={logoBase64?.ulife ?? "/ulife-logo.svg"} alt="ULife Health Buddy" className="h-10 w-auto object-contain" />
+                    <img src="/ulife-logo.svg" alt="ULife Health Buddy" className="h-10 w-auto object-contain" />
                     <div className="w-px h-8 bg-slate-200" />
-                    <img src={logoBase64?.owner ?? "/owner-logo.svg"} alt="Owner" className="h-10 w-auto object-contain" />
+                    <img src="/owner-logo.svg" alt="Owner" className="h-10 w-auto object-contain" />
                   </div>
                   <div>
                     <div className="text-slate-800 font-bold tracking-widest text-sm mb-0.5">BEYONDE HEALTH</div>
