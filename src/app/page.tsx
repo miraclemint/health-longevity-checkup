@@ -1014,24 +1014,6 @@ export default function LongevityGame() {
 
             {/* Action Buttons */}
             <div className="mt-8 max-w-lg mx-auto w-full space-y-3">
-              {/* Share screenshot */}
-              <button
-                onClick={handleShare}
-                disabled={isSaving}
-                className="group w-full relative flex items-center justify-center gap-2 py-4 bg-slate-900 text-white rounded-2xl font-bold text-base overflow-hidden shadow-lg hover:shadow-emerald-500/20 disabled:opacity-60 transition-all duration-300"
-              >
-                <span className="relative z-10 flex items-center gap-2">
-                  {isSaving ? (
-                    <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> กำลังบันทึก...</>
-                  ) : saved ? (
-                    <><Check className="w-5 h-5" /> บันทึกสำเร็จ!</>
-                  ) : (
-                    <><Camera className="w-5 h-5" /> บันทึก / แชร์ผลลัพธ์</>
-                  )}
-                </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-teal-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              </button>
-
               {/* Copy invite */}
               <button
                 onClick={handleCopyInvite}
