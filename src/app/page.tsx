@@ -4,7 +4,6 @@ import React, { useState, useRef } from "react";
 import { motion, AnimatePresence, useAnimation, PanInfo } from "framer-motion";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 import { Play, ArrowRight, Send, CheckCircle2, Shield, HeartPulse, Brain, Zap, Moon, Flame, Trophy, Activity, Camera, Copy, Check, Users } from "lucide-react";
-import html2canvas from "html2canvas";
 
 // --- Game Data ---
 
@@ -334,6 +333,7 @@ export default function LongevityGame() {
     try {
       await new Promise(resolve => setTimeout(resolve, 300));
 
+      const html2canvas = (await import("html2canvas")).default;
       const canvas = await html2canvas(shareRef.current, {
         backgroundColor: "#ffffff",
         scale: 2,
