@@ -362,9 +362,9 @@ export default function LongevityGame() {
             <div className="max-w-2xl mx-auto px-4 py-2.5 flex items-center gap-3">
               {/* Logos condensed */}
               <div className="flex items-center gap-2 shrink-0">
-                <img src="/ulife-logo.svg" alt="ULife" className="h-7 w-auto object-contain" />
+                <img src="/ulife-logo.png" alt="ULife" className="h-7 w-auto object-contain" />
                 <div className="w-px h-5 bg-slate-200" />
-                <img src="/owner-logo.svg" alt="Owner" className="h-7 w-auto object-contain" />
+                <img src="/owner-logo.png" alt="Owner" className="h-7 w-auto object-contain" />
               </div>
 
               {/* Progress + step */}
@@ -434,11 +434,11 @@ export default function LongevityGame() {
               {/* Top: Logos */}
               <div className="flex items-center justify-center gap-3 w-full max-w-xs">
                 <div className="flex-1 flex items-center justify-center bg-white rounded-2xl px-4 py-3">
-                  <img src="/ulife-logo.svg" alt="ULife Health Buddy" className="h-10 w-auto object-contain" />
+                  <img src="/ulife-logo.png" alt="ULife Health Buddy" className="h-10 w-auto object-contain" />
                 </div>
                 <div className="w-px h-8 bg-white/20 shrink-0" />
                 <div className="flex-1 flex items-center justify-center bg-white rounded-2xl px-4 py-3">
-                  <img src="/owner-logo.svg" alt="Owner" className="h-10 w-auto object-contain" />
+                  <img src="/owner-logo.png" alt="Owner" className="h-10 w-auto object-contain" />
                 </div>
               </div>
 
@@ -917,9 +917,9 @@ export default function LongevityGame() {
 
                 <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col items-center text-center gap-4">
                   <div className="flex items-center justify-center gap-5">
-                    <img src="/ulife-logo.svg" alt="ULife Health Buddy" className="h-10 w-auto object-contain" />
+                    <img src="/ulife-logo.png" alt="ULife Health Buddy" className="h-10 w-auto object-contain" />
                     <div className="w-px h-8 bg-slate-200" />
-                    <img src="/owner-logo.svg" alt="Owner" className="h-10 w-auto object-contain" />
+                    <img src="/owner-logo.png" alt="Owner" className="h-10 w-auto object-contain" />
                   </div>
                   <div>
                     <div className="text-slate-800 font-bold tracking-widest text-sm mb-0.5">BEYONDE HEALTH</div>
