@@ -721,7 +721,7 @@ export default function LongevityGame() {
                     transition={{ type: "spring", stiffness: 250, damping: 25 }}
                     className={`absolute inset-0 bg-gradient-to-br from-white to-slate-50 border-4 rounded-[2.5rem] p-8 flex flex-col items-center justify-center text-center shadow-[0_20px_50px_-15px_rgba(0,0,0,0.15)] cursor-grab active:cursor-grabbing transition-colors ${isSelected ? 'border-emerald-300 shadow-emerald-500/10' : 'border-slate-100'}`}
                     style={{ transformPerspective: 1000 }}
-                    whileDrag={{ scale: 1.05, border: "4px solid #34d399", rotateZ: (Math.random() - 0.5) * 6, boxShadow: "0 30px 60px -15px rgba(16, 185, 129, 0.2)" }}
+                    whileDrag={{ scale: 1.05, border: "4px solid #34d399", rotateZ: 3, boxShadow: "0 30px 60px -15px rgba(16, 185, 129, 0.2)" }}
                   >
                     <div className="absolute top-4 right-4 h-3 flex gap-1">
                       {STAGES[currentStage].questions.map((_, i) => (
