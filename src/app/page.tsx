@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence, useAnimation, PanInfo } from "framer-motion";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 import { Play, ArrowRight, Send, CheckCircle2, Shield, HeartPulse, Brain, Zap, Moon, Flame, Trophy, Activity, Camera, Copy, Check, Users } from "lucide-react";
@@ -201,6 +201,24 @@ export default function LongevityGame() {
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [logoBase64, setLogoBase64] = useState<{ ulife: string; owner: string } | null>(null);
+
+  // Pre-load logos as base64 when result screen appears so html2canvas can render them
+  useEffect(() => {
+    if (gameState !== "result") return;
+    const toBase64 = (url: string): Promise<string> =>
+      fetch(url)
+        .then(r => r.blob())
+        .then(blob => new Promise<string>((res, rej) => {
+          const reader = new FileReader();
+          reader.onload = () => res(reader.result as string);
+          reader.onerror = rej;
+          reader.readAsDataURL(blob);
+        }));
+    Promise.all([toBase64("/ulife-logo.svg"), toBase64("/owner-logo.svg")])
+      .then(([ulife, owner]) => setLogoBase64({ ulife, owner }))
+      .catch(() => setLogoBase64(null));
+  }, [gameState]);
 
   const playSound = (type: "swipeLeft" | "swipeRight") => {
     try {
@@ -982,9 +1000,9 @@ export default function LongevityGame() {
 
                 <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col items-center text-center gap-4">
                   <div className="flex items-center justify-center gap-5">
-                    <img src="/ulife-logo.svg" alt="ULife Health Buddy" className="h-10 w-auto object-contain" />
+                    <img src={logoBase64?.ulife ?? "/ulife-logo.svg"} alt="ULife Health Buddy" className="h-10 w-auto object-contain" />
                     <div className="w-px h-8 bg-slate-200" />
-                    <img src="/owner-logo.svg" alt="Owner" className="h-10 w-auto object-contain" />
+                    <img src={logoBase64?.owner ?? "/owner-logo.svg"} alt="Owner" className="h-10 w-auto object-contain" />
                   </div>
                   <div>
                     <div className="text-slate-800 font-bold tracking-widest text-sm mb-0.5">BEYONDE HEALTH</div>
